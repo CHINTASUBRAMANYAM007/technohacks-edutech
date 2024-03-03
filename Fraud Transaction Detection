@@ -1,0 +1,103 @@
+#Import Needed Dependencies
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Classifier Libraries
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import KFold
+from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, recall_score, classification_report
+from xgboost import XGBClassifier, plot_importance
+
+df = pd.read_csv('F:/MTech2022/Intership/Technohack/Fraud Transaction Detection/creditcard.csv')
+df.head(10)
+
+# Getting some information about data
+df.info()
+
+# Getting some descriptive statistics about data
+df.describe()
+
+#checking missing data
+total = df.isnull().sum().sort_values(ascending = False)
+percent = (df.isnull().sum()/df.isnull().count()*100).sort_values(ascending = False)
+pd.concat([total, percent], axis=1, keys=['Total', 'Percent']).transpose()
+
+#checking duplicates
+duplicated_values = df[df.duplicated()]
+print(duplicated_values)
+
+df.drop_duplicates(inplace=True)
+
+# the dupliccates are all removed
+
+df.info()
+
+#showing fraud results
+
+df['Class'].value_counts()
+
+print('No Frauds', round(df['Class'].value_counts()[0]/len(df) * 100,2), '% of the dataset')
+print('Frauds', round(df['Class'].value_counts()[1]/len(df) * 100,2), '% of the dataset')
+
+sns.countplot(x='Class',data = df)
+plt.title('Class Distributions \n (0: No Fraud || 1: Fraud)', fontsize=14)
+
+fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12,6))
+s = sns.boxplot(ax = ax1, x="Class", y="Amount", hue="Class",data=df, palette="PRGn",showfliers=True)
+s = sns.boxplot(ax = ax2, x="Class", y="Amount", hue="Class",data=df, palette="PRGn",showfliers=False)
+plt.show();
+
+tmp = df[['Amount','Class']].copy()
+class_0 = tmp.loc[tmp['Class'] == 0]['Amount']
+class_1 = tmp.loc[tmp['Class'] == 1]['Amount']
+class_0.describe()
+
+class_1.describe()
+
+#The real transaction have a larger mean value, larger Q1, smaller Q3 and Q4 and larger outliers; 
+#fraudulent transactions have a smaller Q1 and mean, larger Q4 and smaller outliers.
+
+dataplot = sns.heatmap(df.corr(), cmap="Blues") 
+plt.show() 
+
+#model training 
+
+x = df.drop('Class', axis='columns')
+y = df['Class']
+
+x_train, x_test, y_train, y_test = train_test_split(x,y, test_size=0.2)
+
+#logistic regression
+
+lr_model = LogisticRegression()
+lr_model.fit(x_train, y_train)
+
+y_predicted = lr_model.predict(x_test)
+print(classification_report(y_test, y_predicted))
+
+confusion = confusion_matrix(y_test, y_predicted)
+confusion
+
+sns.heatmap(confusion, annot=True, linecolor='white', linewidths=1)
+
+#xgboost classifier
+xgb = XGBClassifier()
+xgb.fit(x_train,y_train)
+
+y_pred = xgb.predict(x_test)
+print(classification_report(y_test, y_pred))
+
+confusion_m = confusion_matrix(y_test, y_pred)
+confusion_m
+
+sns.heatmap(confusion_m, annot=True, linecolor='white', linewidths=1)
+
+plot_importance(xgb)
+plt.show()
